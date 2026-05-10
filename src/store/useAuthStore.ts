@@ -27,7 +27,7 @@ const mockDatabase: Record<string, User> = {
     id: '1',
     email: 'student@test.com',
     name: 'João Silva',
-    password: 'password123', // em produção seria hash
+    password: 'password123',
     role: 'student',
     level: 'B1',
     joinedAt: new Date('2024-01-15'),
@@ -64,7 +64,7 @@ const mockDatabase: Record<string, User> = {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isLoggedIn: false,
       isLoading: false,
@@ -90,24 +90,32 @@ export const useAuthStore = create<AuthState>()(
 
       clearError: () => set({ error: null }),
 
-      updateUserProfile: (updates) =>
-        set((state) => ({
-          user: state.user
-            ? {
-                ...state.user,
-                ...updates,
-              }
-            : null,
-        })),
+      updateUserProfile: (updates) => {
+        const state = get()
+        if (!state.user) return
+
+        const updatedUser = { ...state.user, ...updates }
+
+        // Atualizar mock database
+        mockDatabase[state.user.email] = updatedUser
+
+        // Atualizar estado
+        set({ user: updatedUser })
+
+        // Persistir no localStorage manualmente para garantir
+        const authStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}')
+        if (authStorage.state) {
+          authStorage.state.user = updatedUser
+          localStorage.setItem('auth-storage', JSON.stringify(authStorage))
+        }
+      },
 
       registerUser: async (email: string, password: string, name: string, role: UserRole) => {
         set({ isLoading: true, error: null })
 
         try {
-          // Simular delay de rede
           await new Promise((resolve) => setTimeout(resolve, 1000))
 
-          // Validações
           if (!email || !password || !name) {
             throw new Error('Todos os campos são obrigatórios')
           }
@@ -120,12 +128,11 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('Este email já está cadastrado')
           }
 
-          // Criar novo usuário
           const newUser: User = {
             id: Date.now().toString(),
             email,
             name,
-            password, // em produção seria hash
+            password,
             role,
             level: 'A1',
             joinedAt: new Date(),
@@ -148,15 +155,12 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
 
         try {
-          // Simular delay de rede
           await new Promise((resolve) => setTimeout(resolve, 1000))
 
-          // Validações
           if (!email || !password) {
             throw new Error('Email e senha são obrigatórios')
           }
 
-          // Buscar usuário
           const user = mockDatabase[email]
           if (!user || user.password !== password) {
             throw new Error('Email ou senha inválidos')
@@ -173,7 +177,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'auth-storage', // nome da chave no localStorage
+      name: 'auth-storage',
       partialize: (state) => ({ user: state.user, isLoggedIn: state.isLoggedIn }),
     }
   )
