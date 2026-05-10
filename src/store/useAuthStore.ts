@@ -4,25 +4,23 @@ import { User, UserRole } from '@/types'
 
 interface AuthState {
   user: User | null
+  users: Record<string, User>
   isLoggedIn: boolean
   isLoading: boolean
   error: string | null
 
-  // Auth actions
   setUser: (user: User) => void
   logout: () => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   updateUserProfile: (updates: Partial<User>) => void
 
-  // Registration/Login
   registerUser: (email: string, password: string, name: string, role: UserRole) => Promise<void>
   loginUser: (email: string, password: string) => Promise<void>
   clearError: () => void
 }
 
-// Mock database (em produção, seria um backend real)
-const mockDatabase: Record<string, User> = {
+const defaultUsers: Record<string, User> = {
   'student@test.com': {
     id: '1',
     email: 'student@test.com',
@@ -66,6 +64,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      users: defaultUsers,
       isLoggedIn: false,
       isLoading: false,
       error: null,
@@ -95,19 +94,12 @@ export const useAuthStore = create<AuthState>()(
         if (!state.user) return
 
         const updatedUser = { ...state.user, ...updates }
-
-        // Atualizar mock database
-        mockDatabase[state.user.email] = updatedUser
-
-        // Atualizar estado
-        set({ user: updatedUser })
-
-        // Persistir no localStorage manualmente para garantir
-        const authStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}')
-        if (authStorage.state) {
-          authStorage.state.user = updatedUser
-          localStorage.setItem('auth-storage', JSON.stringify(authStorage))
+        const updatedUsers = {
+          ...state.users,
+          [state.user.email]: updatedUser,
         }
+
+        set({ user: updatedUser, users: updatedUsers })
       },
 
       registerUser: async (email: string, password: string, name: string, role: UserRole) => {
@@ -124,7 +116,8 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('Senha deve ter pelo menos 6 caracteres')
           }
 
-          if (mockDatabase[email]) {
+          const state = get()
+          if (state.users[email]) {
             throw new Error('Este email já está cadastrado')
           }
 
@@ -140,8 +133,12 @@ export const useAuthStore = create<AuthState>()(
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
           }
 
-          mockDatabase[email] = newUser
-          set({ user: newUser, isLoggedIn: true, isLoading: false })
+          set({
+            user: newUser,
+            users: { ...state.users, [email]: newUser },
+            isLoggedIn: true,
+            isLoading: false,
+          })
         } catch (err) {
           set({
             isLoading: false,
@@ -161,7 +158,8 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('Email e senha são obrigatórios')
           }
 
-          const user = mockDatabase[email]
+          const state = get()
+          const user = state.users[email]
           if (!user || user.password !== password) {
             throw new Error('Email ou senha inválidos')
           }
@@ -178,7 +176,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ user: state.user, isLoggedIn: state.isLoggedIn }),
+      partialize: (state) => ({
+        user: state.user,
+        users: state.users,
+        isLoggedIn: state.isLoggedIn,
+      }),
     }
   )
 )

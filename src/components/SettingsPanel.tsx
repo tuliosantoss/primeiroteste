@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, User, Bell, Moon, Sun, Globe, Lock, Trash2, Save } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import Button from '@/components/Button'
@@ -29,7 +29,19 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose, darkMode, 
 
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'security'>('profile')
 
+  // Sincroniza o estado do formulário sempre que o usuário mudar (login, hidratação, etc.)
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '')
+      setLevel(user.level || 'A1')
+      setCountry(user.country || '')
+      setNativeLanguage(user.nativeLanguage || 'Português')
+      setBio(user.bio || '')
+    }
+  }, [user?.id])
+
   const handleSave = () => {
+    if (!user) return
     updateUserProfile({ name, level, country, nativeLanguage, bio })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
