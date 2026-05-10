@@ -18,6 +18,10 @@ interface AuthState {
   registerUser: (email: string, password: string, name: string, role: UserRole) => Promise<void>
   loginUser: (email: string, password: string) => Promise<void>
   clearError: () => void
+
+  adminUpdateUser: (email: string, updates: Partial<User>) => void
+  adminDeleteUser: (email: string) => void
+  adminCreateUser: (data: { email: string; password: string; name: string; role: UserRole; level?: User['level'] }) => void
 }
 
 const defaultUsers: Record<string, User> = {
@@ -146,6 +150,52 @@ export const useAuthStore = create<AuthState>()(
           })
           throw err
         }
+      },
+
+      adminUpdateUser: (email, updates) => {
+        const state = get()
+        const target = state.users[email]
+        if (!target) return
+
+        const updatedUser = { ...target, ...updates }
+        const updatedUsers = { ...state.users, [email]: updatedUser }
+
+        const isCurrentUser = state.user?.email === email
+        set({
+          users: updatedUsers,
+          user: isCurrentUser ? updatedUser : state.user,
+        })
+      },
+
+      adminDeleteUser: (email) => {
+        const state = get()
+        if (!state.users[email]) return
+        if (state.user?.email === email) return
+
+        const updatedUsers = { ...state.users }
+        delete updatedUsers[email]
+        set({ users: updatedUsers })
+      },
+
+      adminCreateUser: ({ email, password, name, role, level }) => {
+        const state = get()
+        if (state.users[email]) {
+          throw new Error('Este email já está cadastrado')
+        }
+
+        const newUser: User = {
+          id: Date.now().toString(),
+          email,
+          name,
+          password,
+          role,
+          level: level || 'A1',
+          joinedAt: new Date(),
+          darkMode: false,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        }
+
+        set({ users: { ...state.users, [email]: newUser } })
       },
 
       loginUser: async (email: string, password: string) => {
