@@ -14,7 +14,7 @@ const ReadingPage = () => {
     {
       id: '1',
       word: 'resilience',
-      pronunciation: 'rɪ'zɪləns',
+      pronunciation: "rɪ'zɪləns",
       definition: 'The ability to recover quickly from difficulties',
       example: 'Her resilience helped her overcome many challenges.',
       partOfSpeech: 'noun',
@@ -25,7 +25,7 @@ const ReadingPage = () => {
     {
       id: '2',
       word: 'persevere',
-      pronunciation: 'pɜːr.sə'vɪr',
+      pronunciation: "pɜːr.sə'vɪr",
       definition: 'To continue firmly in a course of action despite difficulty',
       example: 'You must persevere if you want to succeed.',
       partOfSpeech: 'verb',
