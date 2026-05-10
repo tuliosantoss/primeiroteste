@@ -1,12 +1,39 @@
-// User and Authentication Types
+// User Types
+export type UserRole = 'student' | 'teacher' | 'admin'
+
 export interface User {
   id: string
   email: string
   name: string
+  password?: string
   avatar?: string
+  role: UserRole
   level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
   joinedAt: Date
   darkMode: boolean
+  phone?: string
+  bio?: string
+  country?: string
+  nativeLanguage?: string
+}
+
+export interface StudentProfile extends User {
+  role: 'student'
+  totalMinutesStudied: number
+  currentStreak: number
+  xp: number
+}
+
+export interface TeacherProfile extends User {
+  role: 'teacher'
+  studentsCount: number
+  coursesCreated: number
+  totalStudentsLearned: number
+}
+
+export interface AdminProfile extends User {
+  role: 'admin'
+  permissions: string[]
 }
 
 // Learning Progress Types
