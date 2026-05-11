@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Card from '@/components/Card'
 import Button from '@/components/Button'
-import { Volume2, Zap } from 'lucide-react'
+import { Volume2, Zap, CheckCircle2, XCircle } from 'lucide-react'
 import { ReadingMaterial, VocabularyItem } from '@/types'
 
 interface ReadingPanelProps {
@@ -11,6 +11,8 @@ interface ReadingPanelProps {
 const ReadingPanel: React.FC<ReadingPanelProps> = ({ material }) => {
   const [selectedWord, setSelectedWord] = useState<VocabularyItem | null>(null)
   const [fontSize, setFontSize] = useState(16)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [submitted, setSubmitted] = useState(false)
 
   const playPronunciation = (word: string) => {
     const utterance = new SpeechSynthesisUtterance(word)
@@ -22,6 +24,30 @@ const ReadingPanel: React.FC<ReadingPanelProps> = ({ material }) => {
     setSelectedWord(word)
   }
 
+  const handleAnswerChange = (questionId: string, option: string) => {
+    if (submitted) return
+    setAnswers((prev) => ({ ...prev, [questionId]: option }))
+  }
+
+  const handleSubmit = () => {
+    setSubmitted(true)
+  }
+
+  const handleReset = () => {
+    setAnswers({})
+    setSubmitted(false)
+  }
+
+  const allAnswered =
+    material.comprehensionQuestions.length > 0 &&
+    material.comprehensionQuestions.every((q) => answers[q.id])
+
+  const score = submitted
+    ? material.comprehensionQuestions.filter(
+        (q) => answers[q.id] === q.correctAnswer
+      ).length
+    : 0
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Main Reading Panel */}
@@ -29,7 +55,9 @@ const ReadingPanel: React.FC<ReadingPanelProps> = ({ material }) => {
         <Card className="p-8">
           {/* Header */}
           <div className="mb-6">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{material.title}</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              {material.title}
+            </h2>
             <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
               <span>{material.wordCount} words</span>
               <span>~{material.estimatedReadingTime} min read</span>
@@ -101,26 +129,160 @@ const ReadingPanel: React.FC<ReadingPanelProps> = ({ material }) => {
 
           {/* Comprehension Questions */}
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-dark-700">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Comprehension Questions</h3>
-            <div className="space-y-4">
-              {material.comprehensionQuestions.map((question) => (
-                <div key={question.id} className="p-4 bg-gray-50 dark:bg-dark-700 rounded-lg">
-                  <p className="font-semibold text-gray-900 dark:text-white mb-3">{question.question}</p>
-                  <div className="space-y-2">
-                    {question.options.map((option, index) => (
-                      <label key={index} className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={question.id}
-                          value={option}
-                          className="w-4 h-4 text-primary-600"
-                        />
-                        <span className="text-gray-700 dark:text-gray-300">{option}</span>
-                      </label>
-                    ))}
-                  </div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Comprehension Questions
+              </h3>
+              {submitted && (
+                <div className="text-sm font-semibold">
+                  <span
+                    className={`${
+                      score >= material.comprehensionQuestions.length * 0.7
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-amber-600 dark:text-amber-400'
+                    }`}
+                  >
+                    {score}/{material.comprehensionQuestions.length}
+                  </span>
                 </div>
-              ))}
+              )}
+            </div>
+
+            <div className="space-y-4">
+              {material.comprehensionQuestions.map((question, qIdx) => {
+                const userAnswer = answers[question.id]
+                const isCorrect = submitted && userAnswer === question.correctAnswer
+                const isWrong = submitted && userAnswer && userAnswer !== question.correctAnswer
+
+                return (
+                  <div
+                    key={question.id}
+                    className={`p-4 rounded-lg transition-all ${
+                      isCorrect
+                        ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+                        : isWrong
+                          ? 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+                          : 'bg-gray-50 dark:bg-dark-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {qIdx + 1}. {question.question}
+                      </p>
+                      {isCorrect && (
+                        <CheckCircle2
+                          size={20}
+                          className="text-green-600 dark:text-green-400 flex-shrink-0 ml-2"
+                        />
+                      )}
+                      {isWrong && (
+                        <XCircle
+                          size={20}
+                          className="text-red-600 dark:text-red-400 flex-shrink-0 ml-2"
+                        />
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      {question.options.map((option, idx) => {
+                        const selected = userAnswer === option
+                        const isCorrectOption = option === question.correctAnswer
+                        const showCorrect = submitted && isCorrectOption
+                        const showWrong = submitted && selected && !isCorrectOption
+
+                        return (
+                          <label
+                            key={idx}
+                            className={`flex items-center gap-3 cursor-pointer p-2 rounded transition-colors ${
+                              !submitted
+                                ? 'hover:bg-white dark:hover:bg-dark-600'
+                                : 'cursor-default'
+                            } ${
+                              showCorrect
+                                ? 'bg-green-100 dark:bg-green-900/50'
+                                : showWrong
+                                  ? 'bg-red-100 dark:bg-red-900/50'
+                                  : ''
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={question.id}
+                              value={option}
+                              checked={selected}
+                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                              disabled={submitted}
+                              className="w-4 h-4 text-primary-600"
+                            />
+                            <span className="text-gray-700 dark:text-gray-300 text-sm flex-1">
+                              {option}
+                            </span>
+                            {showCorrect && (
+                              <CheckCircle2 size={16} className="text-green-600 dark:text-green-400" />
+                            )}
+                            {showWrong && (
+                              <XCircle size={16} className="text-red-600 dark:text-red-400" />
+                            )}
+                          </label>
+                        )
+                      })}
+                    </div>
+
+                    {isWrong && (
+                      <div className="mt-3 p-3 bg-white dark:bg-dark-800 rounded border border-red-200 dark:border-red-800">
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">
+                          Correct Answer:
+                        </p>
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          {question.correctAnswer}
+                        </p>
+                      </div>
+                    )}
+
+                    {submitted && (
+                      <div className="mt-3 p-3 bg-white dark:bg-dark-800 rounded border border-gray-200 dark:border-dark-600">
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                          Explanation:
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {question.explanation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              {!submitted ? (
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={handleSubmit}
+                  disabled={!allAnswered}
+                >
+                  {allAnswered ? 'Check Answers' : 'Answer all questions first'}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleReset}
+                  >
+                    Try Again
+                  </Button>
+                  <div className="flex-1 flex items-center justify-center bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-200 dark:border-green-800 p-4">
+                    <div className="text-center">
+                      <p className="text-xs text-green-700 dark:text-green-300 mb-1">Final Score</p>
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {Math.round((score / material.comprehensionQuestions.length) * 100)}%
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </Card>
@@ -139,26 +301,42 @@ const ReadingPanel: React.FC<ReadingPanelProps> = ({ material }) => {
 
             <div className="space-y-4">
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedWord.word}</p>
-                <p className="text-sm text-primary-600 dark:text-primary-400 italic">
-                  /{selectedWord.pronunciation}/
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {selectedWord.word}
+                </p>
+                {selectedWord.pronunciation && (
+                  <p className="text-sm text-primary-600 dark:text-primary-400 italic">
+                    /{selectedWord.pronunciation}/
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  PART OF SPEECH
+                </p>
+                <p className="text-sm text-gray-900 dark:text-white capitalize">
+                  {selectedWord.partOfSpeech}
                 </p>
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">PART OF SPEECH</p>
-                <p className="text-sm text-gray-900 dark:text-white capitalize">{selectedWord.partOfSpeech}</p>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">DEFINITION</p>
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  DEFINITION
+                </p>
                 <p className="text-sm text-gray-900 dark:text-white">{selectedWord.definition}</p>
               </div>
 
-              <div>
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">EXAMPLE</p>
-                <p className="text-sm text-gray-900 dark:text-white italic">"{selectedWord.example}"</p>
-              </div>
+              {selectedWord.example && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                    EXAMPLE
+                  </p>
+                  <p className="text-sm text-gray-900 dark:text-white italic">
+                    "{selectedWord.example}"
+                  </p>
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <Button
