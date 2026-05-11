@@ -27,6 +27,77 @@ export function speak(text: string, lang = 'en-US', rate = 0.9): void {
   window.speechSynthesis.speak(utterance)
 }
 
+export interface DialogueLine {
+  speaker: string
+  text: string
+  pitch?: number
+  rate?: number
+}
+
+export interface SequencePlayer {
+  cancel: () => void
+  pause: () => void
+  resume: () => void
+}
+
+export function playDialogue(
+  lines: DialogueLine[],
+  options: {
+    lang?: string
+    onLineChange?: (index: number) => void
+    onComplete?: () => void
+    onError?: (error: string) => void
+  } = {}
+): SequencePlayer {
+  const { lang = 'en-US', onLineChange, onComplete, onError } = options
+
+  if (!isSpeechSynthesisSupported()) {
+    onError?.('Síntese de voz não suportada neste navegador')
+    return { cancel: () => {}, pause: () => {}, resume: () => {} }
+  }
+
+  window.speechSynthesis.cancel()
+  let cancelled = false
+  let index = 0
+
+  const playNext = () => {
+    if (cancelled) return
+    if (index >= lines.length) {
+      onComplete?.()
+      return
+    }
+
+    const line = lines[index]
+    onLineChange?.(index)
+
+    const utter = new SpeechSynthesisUtterance(line.text)
+    utter.lang = lang
+    utter.rate = line.rate ?? 0.9
+    utter.pitch = line.pitch ?? 1
+    utter.onend = () => {
+      index++
+      playNext()
+    }
+    utter.onerror = () => {
+      index++
+      playNext()
+    }
+
+    window.speechSynthesis.speak(utter)
+  }
+
+  playNext()
+
+  return {
+    cancel: () => {
+      cancelled = true
+      window.speechSynthesis.cancel()
+    },
+    pause: () => window.speechSynthesis.pause(),
+    resume: () => window.speechSynthesis.resume(),
+  }
+}
+
 export interface SpeechRecognitionLike {
   lang: string
   continuous: boolean
