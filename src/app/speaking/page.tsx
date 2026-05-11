@@ -5,60 +5,92 @@ import Layout from '@/components/Layout'
 import SpeakingExerciseCard from '@/components/Speaking/SpeakingExerciseCard'
 import Card from '@/components/Card'
 import { SpeakingExercise, SpeakingResult } from '@/types'
+import { analyzeSpeaking } from '@/lib/speech'
+
+const exercises: SpeakingExercise[] = [
+  {
+    id: '1',
+    title: 'Greeting Someone',
+    description: 'Practice basic greetings in English',
+    targetPhrase: 'Good morning, how are you doing today?',
+    difficulty: 'beginner',
+    instructions: 'Greet someone in a friendly tone. Smile while you speak.',
+  },
+  {
+    id: '2',
+    title: 'Ordering at a Cafe',
+    description: 'Place an order at a coffee shop',
+    targetPhrase: "I'd like a large coffee with milk and one sugar, please.",
+    difficulty: 'beginner',
+    instructions: 'Be polite and clear when ordering. Use "please" at the end.',
+  },
+  {
+    id: '3',
+    title: 'Business Introduction',
+    description: 'Introduce yourself professionally',
+    targetPhrase: 'My name is John Smith, and I work as a software engineer.',
+    difficulty: 'intermediate',
+    instructions: 'Speak with confidence. Pronounce your name and job title clearly.',
+  },
+  {
+    id: '4',
+    title: 'Asking for Directions',
+    description: 'Ask how to get somewhere',
+    targetPhrase: 'Excuse me, could you tell me how to get to the nearest train station?',
+    difficulty: 'intermediate',
+    instructions: 'Speak politely. Stress key words like "train station".',
+  },
+  {
+    id: '5',
+    title: 'Phone Conversation',
+    description: 'Make a professional phone call',
+    targetPhrase: 'Hello, I would like to schedule an appointment for next week.',
+    difficulty: 'intermediate',
+    instructions: 'Speak clearly as if the other person cannot see you.',
+  },
+  {
+    id: '6',
+    title: 'Job Interview',
+    description: 'Answer a common interview question',
+    targetPhrase: 'I have over five years of experience in project management and team leadership.',
+    difficulty: 'advanced',
+    instructions: 'Project confidence. Pause briefly between phrases.',
+  },
+  {
+    id: '7',
+    title: 'Giving an Opinion',
+    description: 'Express your view on a topic',
+    targetPhrase: 'In my opinion, technology has both positive and negative effects on society.',
+    difficulty: 'advanced',
+    instructions: 'Speak thoughtfully. Emphasize "positive" and "negative".',
+  },
+  {
+    id: '8',
+    title: 'Complex Explanation',
+    description: 'Explain a technical concept',
+    targetPhrase: 'The main advantage of this approach is flexibility while maintaining compatibility.',
+    difficulty: 'advanced',
+    instructions: 'Take your time. Stress technical terms clearly.',
+  },
+]
 
 const SpeakingPage = () => {
   const [currentExercise, setCurrentExercise] = useState(0)
   const [results, setResults] = useState<SpeakingResult | null>(null)
 
-  const exercises: SpeakingExercise[] = [
-    {
-      id: '1',
-      title: 'Phone Conversation',
-      description: 'Practice making a phone call in English',
-      targetPhrase: "Hello, I'd like to schedule an appointment, please.",
-      difficulty: 'beginner',
-      audioUrl: 'https://example.com/audio.mp3',
-      instructions:
-        'Listen to the phrase, then record your voice saying it. Try to match the pronunciation and intonation as closely as possible.',
-    },
-    {
-      id: '2',
-      title: 'Business Introduction',
-      description: 'Learn to introduce yourself professionally',
-      targetPhrase: 'My name is John Smith, and I work as a software engineer at Tech Company.',
-      difficulty: 'intermediate',
-      audioUrl: 'https://example.com/audio2.mp3',
-      instructions:
-        'Introduce yourself as if you are in a business meeting. Focus on clarity and confidence.',
-    },
-    {
-      id: '3',
-      title: 'Complex Explanation',
-      description: 'Explain complex ideas in English',
-      targetPhrase:
-        'The primary advantage of this approach is that it allows for greater flexibility and scalability while maintaining compatibility.',
-      difficulty: 'advanced',
-      instructions: 'Explain the concept clearly and use appropriate vocabulary. Pay attention to your pace and intonation.',
-    },
-  ]
+  const handleSubmit = (transcript: string, durationMs: number) => {
+    const exercise = exercises[currentExercise]
+    const scores = analyzeSpeaking(transcript, exercise.targetPhrase, durationMs)
 
-  const handleSubmit = (audioData: Blob) => {
-    // Mock analysis
-    const mockResult: SpeakingResult = {
-      exerciseId: exercises[currentExercise].id,
-      userAudio: URL.createObjectURL(audioData),
-      transcription: 'Hello I would like to schedule an appointment please',
-      accuracy: 85,
-      pronunciation: 78,
-      fluency: 82,
-      feedback: [
-        '✓ Good pronunciation of "appointment"',
-        '⚠ Try to slow down slightly for better clarity',
-        '✓ Excellent intonation at the end of the sentence',
-      ],
-    }
-
-    setResults(mockResult)
+    setResults({
+      exerciseId: exercise.id,
+      userAudio: '',
+      transcription: transcript,
+      accuracy: scores.accuracy,
+      pronunciation: scores.pronunciation,
+      fluency: scores.fluency,
+      feedback: scores.feedback,
+    })
   }
 
   const handleNextExercise = () => {
@@ -75,14 +107,27 @@ const SpeakingPage = () => {
     }
   }
 
+  const overall = results
+    ? Math.round((results.accuracy + results.pronunciation + results.fluency) / 3)
+    : 0
+
+  const overallColor =
+    overall >= 80
+      ? 'text-green-600 dark:text-green-400'
+      : overall >= 60
+        ? 'text-amber-600 dark:text-amber-400'
+        : 'text-red-600 dark:text-red-400'
+
   return (
     <Layout>
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Speaking Practice 🎤</h1>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            Speaking Practice 🎤
+          </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Improve your pronunciation, fluency, and confidence in English
+            Pratique sua pronúncia com reconhecimento de voz em tempo real
           </p>
         </div>
 
@@ -90,8 +135,22 @@ const SpeakingPage = () => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Exercise {currentExercise + 1} of {exercises.length}
+              Exercício {currentExercise + 1} de {exercises.length}
             </p>
+            <div className="flex gap-1 mt-2">
+              {exercises.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`h-1.5 w-8 rounded-full transition-colors ${
+                    idx === currentExercise
+                      ? 'bg-primary-600'
+                      : idx < currentExercise
+                        ? 'bg-primary-300 dark:bg-primary-800'
+                        : 'bg-gray-200 dark:bg-dark-700'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
           <div className="flex gap-2">
             <button
@@ -103,7 +162,7 @@ const SpeakingPage = () => {
             </button>
             <button
               onClick={handleNextExercise}
-              disabled={currentExercise === exercises.length - 1 || !results}
+              disabled={currentExercise === exercises.length - 1}
               className="px-4 py-2 rounded-lg bg-primary-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-700 transition-colors"
             >
               Next →
@@ -127,27 +186,29 @@ const SpeakingPage = () => {
               <>
                 {/* Scores */}
                 <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900 dark:to-emerald-900">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Analysis Results</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                    Resultado da Análise
+                  </h3>
 
                   <div className="space-y-4">
                     <div className="text-center p-4 bg-white dark:bg-dark-800 rounded-lg">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Overall Score</p>
-                      <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-                        {Math.round((results.accuracy + results.pronunciation + results.fluency) / 3)}%
-                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Nota Geral</p>
+                      <p className={`text-3xl font-bold mt-2 ${overallColor}`}>{overall}%</p>
                     </div>
 
                     <div className="space-y-2">
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                            Accuracy
+                            Precisão
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{results.accuracy}%</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {results.accuracy}%
+                          </p>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-dark-700 rounded-full h-2">
                           <div
-                            className="bg-blue-500 h-2 rounded-full"
+                            className="bg-blue-500 h-2 rounded-full transition-all"
                             style={{ width: `${results.accuracy}%` }}
                           />
                         </div>
@@ -156,13 +217,15 @@ const SpeakingPage = () => {
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                            Pronunciation
+                            Pronúncia
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{results.pronunciation}%</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {results.pronunciation}%
+                          </p>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-dark-700 rounded-full h-2">
                           <div
-                            className="bg-purple-500 h-2 rounded-full"
+                            className="bg-purple-500 h-2 rounded-full transition-all"
                             style={{ width: `${results.pronunciation}%` }}
                           />
                         </div>
@@ -171,13 +234,15 @@ const SpeakingPage = () => {
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                            Fluency
+                            Fluência
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{results.fluency}%</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {results.fluency}%
+                          </p>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-dark-700 rounded-full h-2">
                           <div
-                            className="bg-green-500 h-2 rounded-full"
+                            className="bg-green-500 h-2 rounded-full transition-all"
                             style={{ width: `${results.fluency}%` }}
                           />
                         </div>
@@ -203,7 +268,9 @@ const SpeakingPage = () => {
 
                 {/* Transcription */}
                 <Card className="p-6">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Transcription</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                    Sua transcrição
+                  </h3>
                   <p className="text-sm text-gray-700 dark:text-gray-300 italic">
                     "{results.transcription}"
                   </p>
@@ -212,34 +279,39 @@ const SpeakingPage = () => {
             ) : (
               <Card className="p-6 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-900 dark:text-blue-200">
-                  📝 Complete the exercise above and submit your recording to see detailed feedback on your
-                  pronunciation, accuracy, and fluency.
+                  📝 Clique em <strong>Listen</strong> para ouvir a frase, depois em{' '}
+                  <strong>Start Recording</strong> para gravar sua voz. A análise compara o que você
+                  falou com a frase-alvo.
                 </p>
               </Card>
             )}
           </div>
         </div>
 
-        {/* Tips Section */}
+        {/* Tips */}
         <Card className="p-8 bg-gradient-to-r from-primary-50 to-secondary-50 dark:from-dark-700 dark:to-dark-800">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">💡 Tips for Better Speaking</h3>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            💡 Dicas para falar melhor
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-2">Speak Slowly</p>
+              <p className="font-semibold text-gray-900 dark:text-white mb-2">Fale com calma</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Take your time and enunciate each word clearly. Native speakers value clarity over speed.
+                Pronuncie cada palavra claramente. Falantes nativos valorizam clareza mais que
+                velocidade.
               </p>
             </div>
             <div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-2">Practice Regularly</p>
+              <p className="font-semibold text-gray-900 dark:text-white mb-2">Pratique todo dia</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Dedicate 20-30 minutes daily to speaking practice. Consistency is key to improvement.
+                Dedique 20-30 minutos por dia. Consistência é a chave para evolução.
               </p>
             </div>
             <div>
-              <p className="font-semibold text-gray-900 dark:text-white mb-2">Listen First</p>
+              <p className="font-semibold text-gray-900 dark:text-white mb-2">Ouça primeiro</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Always listen to the native speaker example before recording. This helps you internalize the correct pronunciation.
+                Sempre ouça o exemplo antes de gravar. Isso ajuda a internalizar a pronúncia
+                correta.
               </p>
             </div>
           </div>
